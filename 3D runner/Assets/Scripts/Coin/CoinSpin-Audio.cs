@@ -9,14 +9,17 @@ public class CoinScript : MonoBehaviour
     {
         transform.Rotate(0, 0, coinSpin * Time.deltaTime);
     }
-    void OnTriggerEnter(Collider other)
+    public void PlayPickupAndDestroy()
     {
-        if(other.CompareTag("Player"))
+        if (coinSound != null)
         {
-            GetComponent<MeshRenderer>().enabled = false;
-            GetComponent<Collider>().enabled = false;
             coinSound.Play();
-            Destroy(gameObject, coinSound.clip.length);
+            float delay = coinSound.clip != null ? coinSound.clip.length : 0.1f;
+            Destroy(gameObject, delay);
+        }
+        else
+        {
+            Destroy(gameObject);
         }
     }
 }

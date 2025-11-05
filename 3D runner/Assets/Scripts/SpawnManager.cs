@@ -3,33 +3,43 @@ using UnityEngine;
 
 public class SpawnManager : MonoBehaviour
 {
-    public GameObject person;
+    public GameObject coin;
     public GameObject obstacle;
     public Transform player;
     public float spawnDistanceX = 50f; // Player ile arasındaki mesafe
     public float spawnDistanceZ = 2f;  // Spawn aralığı (saniye değil mesafe gibi görünüyor)
     public float roadLength = 6f;
     public float destroyDistance = 20f; // Yok olma mesafesi eğer lvl dizayn olacaksa böyle aksi taktirde arkamıza birikecek adamları da siler
+    public float spawnZMaxOffsetFromPlayer = 3f; // Z ekseninde oyuncudan maksimum uzaklık
+    public float coinSpacingX = 1.5f; // Coinlerin x ekseninde arka arkaya mesafesi
+    public int coinGroupMin = 2;
+    public int coinGroupMax = 3;
+    // Farklı spawn periyotları (Inspector’dan ayarlanabilir)
+    public float obstacleSpawnInterval = 1.5f;
+    public float coinSpawnInterval = 0.8f;
 
-    private List<Vector3> spawnPositions = new List<Vector3>();
+    private List<Vector3> obstaclePositions = new List<Vector3>();
     private List<GameObject> spawnObject = new List<GameObject>();
 
     void Start()
     {
-        InvokeRepeating("spawnObstacle", 1f, spawnDistanceZ);
-        InvokeRepeating("spawnPersonGroup", 2f, spawnDistanceZ);
+        InvokeRepeating("spawnObstacle", 1f, obstacleSpawnInterval);
+        InvokeRepeating("spawnCoinGroup", 1.2f, coinSpawnInterval);
     }
     void Update()
     {
         foreach (GameObject obj in spawnObject)
         {
             if (obj == null) continue;
-            if (obj.CompareTag("Person") && obj.transform.position.x + destroyDistance < player.position.x)
+            if (obj.CompareTag("Coin") && obj.transform.position.x + destroyDistance < player.position.x)
             {
                 Destroy(obj);
             }
             if (obj.CompareTag("Obstacle") && obj.transform.position.x + destroyDistance < player.position.x)
             {
+                // Silmeden önce bu engelin konumunu listeden de temizle
+                Vector3 pos = obj.transform.position;
+                obstaclePositions.RemoveAll(p => Vector3.Distance(p, pos) < 0.1f);
                 Destroy(obj);
             }
         }
@@ -39,37 +49,34 @@ public class SpawnManager : MonoBehaviour
     void spawnObstacle()
     {
         Vector3 spawnPos = GetRandomPosition();
-        GameObject newObj = Instantiate(obstacle, spawnPos, Quaternion.identity);
+        GameObject newObj = Instantiate(obstacle, spawnPos, obstacle.transform.rotation);
         spawnObject.Add(newObj);
+        obstaclePositions.Add(spawnPos);
     }
     // Grubun spawn olduğu konumu ve kişi sayısını belirleyen fonksiyon
-    void spawnPersonGroup()
+    void spawnCoinGroup()
     {
-        int groupSize = Random.Range(1, 5);
-        Vector3 firstPos = GetRandomPosition();
-        GameObject newObj = Instantiate(person, firstPos, Quaternion.identity);
-        spawnPositions.Add(firstPos);
-        List<GameObject> groupObj = new List<GameObject>();
-        spawnObject.Add(newObj);
-        for (int i = 1; i < groupSize; i++)
-        {
-            Vector3 spawnPos;
-            int tries = 0;
-            do
-            {
-                int xOffset = Random.Range(-1, 1);
-                int zOffset = Random.Range(-1, 1);
-                float spawnZ = Mathf.Clamp(firstPos.z + zOffset, -roadLength, roadLength);
-                spawnPos = new Vector3(firstPos.x + xOffset, firstPos.y, spawnZ);
-                tries++;
-                if (tries > 10) break;
-            } while (IsOverlapping(spawnPos));
+        int groupSize = Random.Range(coinGroupMin, coinGroupMax + 1);
+        // Coinler oyuncudan bağımsız, yol genişliğinde rastgele Z'de olsun
+        float baseX = player.position.x + spawnDistanceX;
+        float baseZ = Random.Range(-roadLength, roadLength);
+        Vector3 firstPos = new Vector3(baseX, player.position.y, baseZ);
 
-            GameObject personGroup = Instantiate(person, spawnPos, Quaternion.identity);
-            spawnPositions.Add(spawnPos);
-            groupObj.Add(personGroup);
+        // Her coin için, sadece OBSTACLE ile çakışmayı kontrol et
+        for (int i = 0; i < groupSize; i++)
+        {
+            Vector3 coinPos = new Vector3(baseX + i * coinSpacingX, firstPos.y, firstPos.z);
+            int tries = 0;
+            while (IsOverlappingObstacle(coinPos) && tries < 10)
+            {
+                // Obstacle ile çakışıyorsa, tam yol aralığından yeni bir Z seç
+                float newZ = Random.Range(-roadLength, roadLength);
+                coinPos = new Vector3(coinPos.x, coinPos.y, newZ);
+                tries++;
+            }
+            GameObject newCoin = Instantiate(coin, coinPos, coin.transform.rotation);
+            spawnObject.Add(newCoin);
         }
-        spawnObject.AddRange(groupObj);
     }
     // Random konum kaydeden fonksiyon
     Vector3 GetRandomPosition()
@@ -79,19 +86,18 @@ public class SpawnManager : MonoBehaviour
         do
         {
             float x = player.position.x + spawnDistanceX;
-            float z = Random.Range(-roadLength, roadLength);
+            float z = Mathf.Clamp(player.position.z + Random.Range(-spawnZMaxOffsetFromPlayer, spawnZMaxOffsetFromPlayer), -roadLength, roadLength);
             pos = new Vector3(x, player.position.y, z);
             tries++;
             if (tries > 20) break;
-        } while (IsOverlapping(pos));
-        spawnPositions.Add(pos);
+        } while (IsOverlappingObstacle(pos));
         return pos;
     }
     // Engel ve kişilerin üst üste çıkmamasını sağlayan fonksiyon
-    bool IsOverlapping(Vector3 pos)
+    bool IsOverlappingObstacle(Vector3 pos)
     {
         float minDistance = 1.5f;
-        foreach (Vector3 p in spawnPositions)
+        foreach (Vector3 p in obstaclePositions)
         {
             if (Vector3.Distance(p, pos) < minDistance)
                 return true;
