@@ -4,7 +4,7 @@ using UnityEngine;
 public class SpawnManager : MonoBehaviour
 {
     public GameObject coin;
-    public GameObject obstacle;
+    public GameObject[] obstacles;
     public Transform player;
     public float spawnDistanceX = 50f; // Player ile arasındaki mesafe
     public float spawnDistanceZ = 2f;  // Spawn aralığı (saniye değil mesafe gibi görünüyor)
@@ -48,8 +48,11 @@ public class SpawnManager : MonoBehaviour
     //Engellerin spawn olmasını sağlayan fonksiyon
     void spawnObstacle()
     {
+        if (obstacles == null || obstacles.Length == 0) return;
         Vector3 spawnPos = GetRandomPosition();
-        GameObject newObj = Instantiate(obstacle, spawnPos, obstacle.transform.rotation);
+        int idx = Random.Range(0, obstacles.Length);
+        GameObject prefab = obstacles[idx];
+        GameObject newObj = Instantiate(prefab, spawnPos, prefab.transform.rotation);
         spawnObject.Add(newObj);
         obstaclePositions.Add(spawnPos);
     }

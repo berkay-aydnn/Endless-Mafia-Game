@@ -6,12 +6,6 @@ public class Timer : MonoBehaviour
 {
     public TextMeshProUGUI timerText;
     private float time;
-
-    void Start()
-    {
-        
-    }
-
     void Update()
     {
         //Zaman değerlerini alır
