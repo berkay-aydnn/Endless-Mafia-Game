@@ -2,12 +2,12 @@ using UnityEngine;
 
 public class CoinScript : MonoBehaviour
 {
-    public float coinSpin = 1f;
+    public float coinSpin = 10f;
     public AudioSource coinSound;
 
     void Update()
     {
-        transform.Rotate(0, 0, coinSpin * Time.deltaTime);
+        transform.Rotate(0, coinSpin * Time.deltaTime, 0);
     }
     public void PlayPickupAndDestroy()
     {
